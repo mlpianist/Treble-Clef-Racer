@@ -10,7 +10,7 @@ canvas{position:fixed;left:0;top:0;width:100%;height:calc(100% - var(--ph,0px));
 #big{position:fixed;left:0;right:0;top:0;bottom:var(--ph,0px);display:flex;align-items:center;justify-content:center;pointer-events:none}
 #big span{font-size:30vmin;font-weight:900;text-shadow:0 .03em 0 var(--ink),0 0 .2em rgba(0,0,0,.35);animation:pop 1s ease-out}
 @keyframes pop{0%{transform:scale(2.2);opacity:0}25%{transform:scale(1);opacity:1}100%{transform:scale(.8);opacity:.9}}
-body.bad #hud{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 10px);color:#fff;font-weight:700;text-shadow:0 1px 2px var(--ink);line-height:1.5;min-width:200px}
+#hud{position:fixed;left:12px;top:calc(env(safe-area-inset-top,0px) + 10px);color:#fff;font-weight:700;text-shadow:0 1px 2px var(--ink);line-height:1.5;min-width:200px}
 .bar{height:10px;background:rgba(72,48,48,.55);border-radius:5px;margin:4px 0;overflow:hidden}
 .bar i{display:block;height:100%;width:0}
 .ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(72,48,48,.6)}
@@ -33,7 +33,9 @@ body.bad #panel{background:var(--coral)}
 <div class="bar"><i id="b0" style="background:#F06060"></i></div><div class="bar"><i id="b1" style="background:#70E0E0"></i></div><div class="bar"><i id="b2" style="background:#E1E7E7"></i></div></div>
 <div id="panel"><div id="staff"></div><div id="keys"></div></div>
 <div class="ov" id="start"><div class="card"><h1>Letter Racer</h1>
-<p>Your car follows the track. You control its speed: read each note on the staff and tap the matching piano key as fast as you can. A wrong key carries your time over to the next note.<br>Notes start during the 10-second countdown!</p><p id="theme" style="font-weight:700"></p><button id="go">Start race</button></div></div>
+<p>Your car follows the track. You control its speed: read each note on the staff and tap the matching piano key as fast as you can. A wrong key carries your time over to the next note.<br>Notes start during the 10-second countdown!</p><p id="theme" style="font-weight:700"></p><details id="mus" style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">Add music (optional)</summary>
+<div style="text-align:left;font-size:13px;margin-top:6px">Race Theme.mp3 <input type="file" accept="audio/*" data-k="theme"><br>Fanfare.mp3 <input type="file" accept="audio/*" data-k="fan"><br>Loser.mp3 <input type="file" accept="audio/*" data-k="lose"></div></details>
+<button id="go">Start race</button></div></div>
 <div class="ov" id="res" style="display:none"><div class="card"><h2 id="rt"></h2><div id="rl"></div><button onclick="location.reload()">Race again</button></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/cjs/vexflow.js"></script>
@@ -222,8 +224,13 @@ function mkKey(name,cls,left,w,h){const k=document.createElement('div');k.classN
 WH.forEach((n,i)=>{const k=mkKey(n,'w',i*100/12,100/12,100);if(n==='C4'){const l=document.createElement('span');l.textContent='MC';k.appendChild(l)}});
 Object.keys(BL).forEach(i=>mkKey(BL[i],'b',(+i+1)*100/12-2.5,5,62));
 function big(txt,color){$('big').innerHTML='';const s=document.createElement('span');s.textContent=txt;s.style.color=color;$('big').appendChild(s)}
+const MUS={theme:new Audio('Race Theme.mp3'),fan:new Audio('Fanfare.mp3'),lose:new Audio('Loser.mp3')};
+MUS.theme.loop=true;
+document.querySelectorAll('#mus input').forEach(inp=>inp.onchange=()=>{const f=inp.files[0];if(f)MUS[inp.dataset.k].src=URL.createObjectURL(f)});
+const playM=a=>{a.currentTime=0;a.play().catch(()=>{})};
+let ended=false;
 $('go').onclick=()=>{
-  AC=new(window.AudioContext||window.webkitAudioContext)();$('start').style.display='none';$('panel').style.display='flex';resize();
+  AC=new(window.AudioContext||window.webkitAudioContext)();playM(MUS.theme);$('start').style.display='none';$('panel').style.display='flex';resize();
   phase='count';newNote();
   const cols=['#F06060','#FF9F5A','#FFE066','#9CFCF0','#C08490'];let n=10;
   (function tick(){
@@ -265,7 +272,7 @@ function loop(now){
   racers.forEach((o,i)=>$('b'+i).style.width=(o.t/N*100)+'%');
   $('info').textContent='Cell '+Math.min(N,(pl.t|0)+1)+'/100  ·  Notes '+correct+'/50';
   $('pos').textContent='Position: '+(1+racers.filter(o=>o.t>pl.t).length)+'/3';
-  if(pl.fin!==null)results();
+  if(pl.fin!==null){if(!ended){ended=true;MUS.theme.pause();playM(order[0]===pl?MUS.fan:MUS.lose)}results()}
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
