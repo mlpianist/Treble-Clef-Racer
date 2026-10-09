@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Treble Clef Racer</title>
+<title>Letter Racer</title>
 <style>
 :root{--cream:#E1E7E7;--ink:#483030;--coral:#F06060;--cyan:#70E0E0;--teal:#60B4B4;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -16,6 +16,7 @@ canvas{position:fixed;left:0;top:0;width:100%;height:calc(100% - var(--ph,0px));
 .ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(72,48,48,.6)}
 .card{background:var(--cream);color:var(--ink);padding:24px 32px;border-radius:14px;max-width:420px;text-align:center;line-height:1.5}
 .card h1,.card h2{margin:0 0 8px}
+#lv button{display:block;width:100%;margin-top:8px}
 button{font:inherit;font-weight:800;padding:10px 26px;border:0;border-radius:10px;background:var(--coral);color:#fff;cursor:pointer;margin-top:12px}
 #panel{position:fixed;left:0;right:0;bottom:0;display:none;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px 16px;padding:8px 12px calc(env(safe-area-inset-bottom,0px) + 8px);background:var(--cream);border-top:4px solid var(--ink)}
 body.bad #panel{background:var(--coral)}
@@ -33,9 +34,7 @@ body.bad #panel{background:var(--coral)}
 <div class="bar"><i id="b0" style="background:#F06060"></i></div><div class="bar"><i id="b1" style="background:#70E0E0"></i></div><div class="bar"><i id="b2" style="background:#E1E7E7"></i></div></div>
 <div id="panel"><div id="staff"></div><div id="keys"></div></div>
 <div class="ov" id="start"><div class="card"><h1>Letter Racer</h1>
-<p>Your car follows the track. You control its speed: read each note on the staff and tap the matching piano key as fast as you can. A wrong key carries your time over to the next note.<br>Notes start during the 10-second countdown!</p><p id="theme" style="font-weight:700"></p><details id="mus" style="margin-top:8px"><summary style="cursor:pointer;font-weight:700">Add music (optional)</summary>
-<div style="text-align:left;font-size:13px;margin-top:6px">Race Theme.mp3 <input type="file" accept="audio/*" data-k="theme"><br>Fanfare.mp3 <input type="file" accept="audio/*" data-k="fan"><br>Loser.mp3 <input type="file" accept="audio/*" data-k="lose"></div></details>
-<button id="go">Start race</button></div></div>
+<p>Your car follows the track. You control its speed: read each note on the staff and tap the matching piano key as fast as you can. A wrong key carries your time over to the next note.<br>Notes start during the 10-second countdown!</p><p id="theme" style="font-weight:700"></p><div id="lv"><button data-l="1">Level 1 · Rivals finish in 200–220 s</button><button data-l="2">Level 2 · Rivals finish in 150–170 s</button><button data-l="3">Level 3 · Rivals finish in 113–133 s</button></div></div></div>
 <div class="ov" id="res" style="display:none"><div class="card"><h2 id="rt"></h2><div id="rl"></div><button onclick="location.reload()">Race again</button></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/cjs/vexflow.js"></script>
@@ -226,10 +225,18 @@ Object.keys(BL).forEach(i=>mkKey(BL[i],'b',(+i+1)*100/12-2.5,5,62));
 function big(txt,color){$('big').innerHTML='';const s=document.createElement('span');s.textContent=txt;s.style.color=color;$('big').appendChild(s)}
 const MUS={theme:new Audio('Race Theme.mp3'),fan:new Audio('Fanfare.mp3'),lose:new Audio('Loser.mp3')};
 MUS.theme.loop=true;
-document.querySelectorAll('#mus input').forEach(inp=>inp.onchange=()=>{const f=inp.files[0];if(f)MUS[inp.dataset.k].src=URL.createObjectURL(f)});
 const playM=a=>{a.currentTime=0;a.play().catch(()=>{})};
 let ended=false;
-$('go').onclick=()=>{
+const LV={1:[200,220],2:[150,170],3:[113,133]};
+function setRivals(win){
+  racers.slice(1).forEach(o=>{
+    const T=rnd(win[0],win[1]),ph=[rnd(0,6.3),rnd(0,6.3),rnd(0,6.3)],fq=[rnd(.05,.1),rnd(.15,.3),rnd(.4,.7)],w=[];
+    for(let c=0;c<N;c++)w.push(Math.max(.4,1+.22*Math.sin(c*fq[0]*6.283+ph[0])+.15*Math.sin(c*fq[1]*6.283+ph[1])+.1*Math.sin(c*fq[2]*6.283+ph[2])+rnd(-.08,.08)));
+    const k=T/w.reduce((a,x,c)=>a+x/MUL[c],0);
+    o.ct=w.map(x=>x*k);
+  });
+}
+document.querySelectorAll('#lv button').forEach(b=>b.onclick=()=>{setRivals(LV[b.dataset.l]);
   AC=new(window.AudioContext||window.webkitAudioContext)();playM(MUS.theme);$('start').style.display='none';$('panel').style.display='flex';resize();
   phase='count';newNote();
   const cols=['#F06060','#FF9F5A','#FFE066','#9CFCF0','#C08490'];let n=10;
@@ -237,20 +244,21 @@ $('go').onclick=()=>{
     if(n>0){big(n,cols[n%5]);beep(330+(10-n)*40,.3,'sine',.3);n--;setTimeout(tick,1000)}
     else go();
   })();
-};
+});
 function gauss(){let a=0,b=0;while(!a)a=Math.random();while(!b)b=Math.random();return Math.sqrt(-2*Math.log(a))*Math.cos(2*Math.PI*b)}
 function go(){
   phase='race';raceT=0;
   beep(110,.9,'sawtooth',.35);beep(116,.9,'square',.18);
   big('GO!','#9CFCF0');setTimeout(()=>$('big').innerHTML='',900);
 }
-const tm=(o,p)=>{if(o.times[p]===undefined&&o!==pl&&pl.times.length)o.times[p]=pl.times[Math.random()*Math.min(20,pl.times.length)|0];return o.times[p]};
 function step(o,dt){
   if(o.fin!==null)return;
-  const c=Math.min(o.t|0,N-1),T=tm(o,c>>1);if(T===undefined)return;
+  const c=Math.min(o.t|0,N-1);
+  if(o.ct){const nt=o.t+dt*MUL[c]/o.ct[c];if(nt>=N){o.t=N;o.fin=raceT;order.push(o)}else o.t=nt;return}
+  const T=o.times[c>>1];if(T===undefined)return;
   const nt=o.t+dt*2*MUL[c]/T;
   if(nt>=N){o.t=N;o.fin=raceT;order.push(o)}
-  else if(nt>=c+1&&tm(o,(c+1)>>1)===undefined)o.t=c+1;
+  else if(nt>=c+1&&o.times[(c+1)>>1]===undefined)o.t=c+1;
   else o.t=nt;
 }
 function results(){
